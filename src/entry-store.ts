@@ -1,3 +1,5 @@
+import { BUCKET_NONE, NIL } from "./constants";
+
 export type EntryId = number;
 
 export interface EntryStoreDebug {
@@ -6,7 +8,6 @@ export interface EntryStoreDebug {
     freeCount: number;
 }
 
-const NIL = -1;
 
 function fillI32(arr: Int32Array, value: number) {
     arr.fill(value);
@@ -39,6 +40,8 @@ export class EntryStore<K, V> {
     public lruNext: Int32Array;
     public lruPrev: Int32Array;
 
+    public wheelBucket: Int32Array;
+
     constructor(opts: { maxEntries: number; initialCap?: number }) {
         const { maxEntries } = opts;
         if (!Number.isInteger(maxEntries) || maxEntries <= 0) {
@@ -68,11 +71,13 @@ export class EntryStore<K, V> {
         this.wheelPrev = new Int32Array(this.cap);
         this.lruNext = new Int32Array(this.cap);
         this.lruPrev = new Int32Array(this.cap);
+        this.wheelBucket = new Int32Array(this.cap);
 
         fillI32(this.wheelNext, NIL);
         fillI32(this.wheelPrev, NIL);
         fillI32(this.lruNext, NIL);
         fillI32(this.lruPrev, NIL);
+        fillI32(this.wheelBucket, BUCKET_NONE);
     }
 
     debug(): EntryStoreDebug {
@@ -149,6 +154,8 @@ export class EntryStore<K, V> {
 
         this.lruNext[id] = NIL;
         this.lruPrev[id] = NIL;
+
+        this.wheelBucket[id] = BUCKET_NONE;
     }
 
     /**
@@ -182,21 +189,25 @@ export class EntryStore<K, V> {
         const oldWheelPrev = this.wheelPrev;
         const oldLruNext = this.lruNext;
         const oldLruPrev = this.lruPrev;
+        const oldWheelBucket = this.wheelBucket;
 
         this.wheelNext = new Int32Array(newCap);
         this.wheelPrev = new Int32Array(newCap);
         this.lruNext = new Int32Array(newCap);
         this.lruPrev = new Int32Array(newCap);
+        this.wheelBucket = new Int32Array(newCap);
 
         fillI32(this.wheelNext, NIL);
         fillI32(this.wheelPrev, NIL);
         fillI32(this.lruNext, NIL);
         fillI32(this.lruPrev, NIL);
+        fillI32(this.wheelBucket, BUCKET_NONE);
 
         this.wheelNext.set(oldWheelNext);
         this.wheelPrev.set(oldWheelPrev);
         this.lruNext.set(oldLruNext);
         this.lruPrev.set(oldLruPrev);
+        this.wheelBucket.set(oldWheelBucket);
 
         this.cap = newCap;
     }
