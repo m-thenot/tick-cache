@@ -35,6 +35,7 @@ export class EntryStore<K, V> {
 
     // SoA metadata
     public expiresTick: Uint32Array;
+    public ttlMs: Uint32Array; // Original TTL in milliseconds (for updateTTLOnGet)
     public wheelNext: Int32Array;
     public wheelPrev: Int32Array;
     public lruNext: Int32Array;
@@ -66,6 +67,7 @@ export class EntryStore<K, V> {
         this.valRef = new Array<V | undefined>(this.cap);
 
         this.expiresTick = new Uint32Array(this.cap); // 0 by default
+        this.ttlMs = new Uint32Array(this.cap); // 0 by default
 
         this.wheelNext = new Int32Array(this.cap);
         this.wheelPrev = new Int32Array(this.cap);
@@ -112,10 +114,10 @@ export class EntryStore<K, V> {
     }
 
     /**
-     * Mark slot as used (key/value set). Helps invariants: "free slot" based on keyRef.
-     * In the real cache, set() will do this directly.
+     * Store key and value for the given entry ID.
+     * Should be called after allocating an entry ID.
      */
-    markUsed(id: EntryId, key: K, value: V): void {
+    setEntry(id: EntryId, key: K, value: V): void {
         if (!Number.isInteger(id) || id < 0 || id >= this.cap) {
             throw new Error(`invalid entryId: ${id}`);
         }
@@ -148,6 +150,7 @@ export class EntryStore<K, V> {
         this.valRef[id] = undefined;
 
         this.expiresTick[id] = 0;
+        this.ttlMs[id] = 0;
 
         this.wheelNext[id] = NIL;
         this.wheelPrev[id] = NIL;
@@ -184,6 +187,10 @@ export class EntryStore<K, V> {
         const oldExpires = this.expiresTick;
         this.expiresTick = new Uint32Array(newCap);
         this.expiresTick.set(oldExpires);
+
+        const oldTtlMs = this.ttlMs;
+        this.ttlMs = new Uint32Array(newCap);
+        this.ttlMs.set(oldTtlMs);
 
         const oldWheelNext = this.wheelNext;
         const oldWheelPrev = this.wheelPrev;

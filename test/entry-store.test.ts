@@ -164,8 +164,8 @@ describe("EntryStore", () => {
             // Allocate and mark some entries
             const id0 = store.allocId();
             const id1 = store.allocId();
-            store.markUsed(id0, "key0", 100);
-            store.markUsed(id1, "key1", 200);
+            store.setEntry(id0, "key0", 100);
+            store.setEntry(id1, "key1", 200);
 
             // Trigger growth by allocating more
             for (let i = 0; i < 10; i++) {
@@ -209,9 +209,9 @@ describe("EntryStore", () => {
             const id2 = store.allocId(); // 2
 
             // Mark them as used
-            store.markUsed(id0, "k0", 0);
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
+            store.setEntry(id0, "k0", 0);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
 
             // Free in order: 0, 1, 2
             store.freeId(id0);
@@ -239,7 +239,7 @@ describe("EntryStore", () => {
             const id1 = store.allocId(); // 1
             store.allocId(); // 2
 
-            store.markUsed(id1, "k1", 1);
+            store.setEntry(id1, "k1", 1);
 
             // Free one
             store.freeId(id1);
@@ -265,9 +265,9 @@ describe("EntryStore", () => {
             const id1 = store.allocId();
             const id2 = store.allocId();
 
-            store.markUsed(id0, "k0", 0);
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
+            store.setEntry(id0, "k0", 0);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
 
             store.freeId(id0);
             expect(store.debug().freeCount).toBe(1);
@@ -292,9 +292,9 @@ describe("EntryStore", () => {
             const id1 = store.allocId(); // 1
             const id2 = store.allocId(); // 2
 
-            store.markUsed(id0, "k0", 0);
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
+            store.setEntry(id0, "k0", 0);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
 
             // All slots used
             expect(store.allocId()).toBe(-1);
@@ -308,7 +308,7 @@ describe("EntryStore", () => {
         });
     });
 
-    describe("markUsed / freeId", () => {
+    describe("setEntry / freeId", () => {
         it("should store key and value in correct slots", () => {
             const store = new EntryStore<string, number>({
                 maxEntries: 100,
@@ -316,21 +316,21 @@ describe("EntryStore", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "myKey", 42);
+            store.setEntry(id, "myKey", 42);
 
             expect(store.keyRef[id]).toBe("myKey");
             expect(store.valRef[id]).toBe(42);
         });
 
-        it("should throw on invalid entryId in markUsed", () => {
+        it("should throw on invalid entryId in setEntry", () => {
             const store = new EntryStore<string, number>({
                 maxEntries: 100,
                 initialCap: 16,
             });
 
-            expect(() => store.markUsed(-1, "k", 1)).toThrow(/invalid entryId/);
-            expect(() => store.markUsed(1000, "k", 1)).toThrow(/invalid entryId/);
-            expect(() => store.markUsed(1.5, "k", 1)).toThrow(/invalid entryId/);
+            expect(() => store.setEntry(-1, "k", 1)).toThrow(/invalid entryId/);
+            expect(() => store.setEntry(1000, "k", 1)).toThrow(/invalid entryId/);
+            expect(() => store.setEntry(1.5, "k", 1)).toThrow(/invalid entryId/);
         });
 
         it("should throw on invalid entryId in freeId", () => {
@@ -340,7 +340,7 @@ describe("EntryStore", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "k", 1);
+            store.setEntry(id, "k", 1);
 
             expect(() => store.freeId(-1)).toThrow(/invalid entryId/);
             expect(() => store.freeId(1000)).toThrow(/invalid entryId/);
@@ -354,7 +354,7 @@ describe("EntryStore", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key", 123);
+            store.setEntry(id, "key", 123);
 
             // First free is OK
             store.freeId(id);
@@ -370,7 +370,7 @@ describe("EntryStore", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key", 999);
+            store.setEntry(id, "key", 999);
 
             store.freeId(id);
 
@@ -387,7 +387,7 @@ describe("EntryStore", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key", 123);
+            store.setEntry(id, "key", 123);
 
             // Manually set some metadata
             store.expiresTick[id] = 999;
@@ -415,7 +415,7 @@ describe("EntryStore", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key", 123);
+            store.setEntry(id, "key", 123);
             store.expiresTick[id] = 999;
 
             store.freeId(id);
@@ -443,8 +443,8 @@ describe("EntryStore", () => {
 
             expect(store.debug().sizeAllocated).toBe(3);
 
-            store.markUsed(id0, "k0", 0);
-            store.markUsed(id1, "k1", 1);
+            store.setEntry(id0, "k0", 0);
+            store.setEntry(id1, "k1", 1);
 
             store.freeId(id0);
 
@@ -460,7 +460,7 @@ describe("EntryStore", () => {
 
             for (let i = 0; i < 10; i++) {
                 const id = store.allocId();
-                store.markUsed(id, `k${i}`, i);
+                store.setEntry(id, `k${i}`, i);
             }
 
             const debug1 = store.debug();
@@ -487,7 +487,7 @@ describe("EntryStore", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "k", 1);
+            store.setEntry(id, "k", 1);
 
             store.freeId(id);
 
@@ -509,7 +509,7 @@ describe("EntryStore", () => {
             const fail = store.allocId();
             expect(fail).toBe(-1);
 
-            store.markUsed(id, "k", 1);
+            store.setEntry(id, "k", 1);
             store.freeId(id);
 
             const reused = store.allocId();
@@ -543,7 +543,7 @@ describe("EntryStore", () => {
             // Allocate 20
             for (let i = 0; i < 20; i++) {
                 const id = store.allocId();
-                store.markUsed(id, `k${i}`, i);
+                store.setEntry(id, `k${i}`, i);
                 ids.push(id);
             }
 
@@ -577,7 +577,7 @@ describe("EntryStore", () => {
             const id = store.allocId();
             const user: User = { name: "Alice", age: 30 };
 
-            store.markUsed(id, 12345, user);
+            store.setEntry(id, 12345, user);
 
             expect(store.keyRef[id]).toBe(12345);
             expect(store.valRef[id]).toEqual(user);
@@ -596,7 +596,7 @@ describe("EntryStore", () => {
 
             for (let i = 0; i < 10_000; i++) {
                 const id = store.allocId();
-                store.markUsed(id, `key${i}`, `val${i}`);
+                store.setEntry(id, `key${i}`, `val${i}`);
             }
 
             const elapsed = performance.now() - start;
@@ -620,7 +620,7 @@ describe("EntryStore", () => {
                 // Allocate 1000
                 for (let i = 0; i < 1000; i++) {
                     const id = store.allocId();
-                    store.markUsed(id, i, i * 2);
+                    store.setEntry(id, i, i * 2);
                     ids.push(id);
                 }
 

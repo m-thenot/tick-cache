@@ -121,7 +121,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Schedule to expire at tick 3
             wheel.schedule(id, 3);
@@ -147,7 +147,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             wheel.schedule(id, 3);
             expect(store.wheelBucket[id]).toBe(3);
@@ -170,7 +170,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Schedule to tick 3
             wheel.schedule(id, 3);
@@ -197,9 +197,9 @@ describe("TimerWheel", () => {
             const id2 = store.allocId();
             const id3 = store.allocId();
 
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
-            store.markUsed(id3, "k3", 3);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
+            store.setEntry(id3, "k3", 3);
 
             // All expire at tick 3 (same bucket)
             wheel.schedule(id1, 3);
@@ -234,7 +234,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Schedule beyond horizon (tick 20, horizon = 8)
             wheel.schedule(id, 20);
@@ -255,7 +255,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             wheel.schedule(id, 20); // overflow
             expect(store.wheelBucket[id]).toBe(BUCKET_OVERFLOW);
@@ -278,7 +278,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Schedule at tick 20 (overflow)
             wheel.schedule(id, 20);
@@ -308,7 +308,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Schedule at tick 10 (overflow)
             wheel.schedule(id, 10);
@@ -339,7 +339,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Schedule to expire at tick 3
             wheel.schedule(id, 3);
@@ -374,9 +374,9 @@ describe("TimerWheel", () => {
             const id2 = store.allocId();
             const id3 = store.allocId();
 
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
-            store.markUsed(id3, "k3", 3);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
+            store.setEntry(id3, "k3", 3);
 
             // All expire at tick 5
             wheel.schedule(id1, 5);
@@ -409,8 +409,8 @@ describe("TimerWheel", () => {
             const id1 = store.allocId();
             const id2 = store.allocId();
 
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
 
             wheel.schedule(id1, 3);
             wheel.schedule(id2, 6);
@@ -461,7 +461,7 @@ describe("TimerWheel", () => {
             const ids: number[] = [];
             for (let i = 0; i < 10; i++) {
                 const id = store.allocId();
-                store.markUsed(id, `k${i}`, i);
+                store.setEntry(id, `k${i}`, i);
                 wheel.schedule(id, 5);
                 ids.push(id);
             }
@@ -492,7 +492,7 @@ describe("TimerWheel", () => {
             // Schedule 10 entries at tick 5
             for (let i = 0; i < 10; i++) {
                 const id = store.allocId();
-                store.markUsed(id, `k${i}`, i);
+                store.setEntry(id, `k${i}`, i);
                 wheel.schedule(id, 5);
             }
 
@@ -531,7 +531,7 @@ describe("TimerWheel", () => {
             for (let tick = 1; tick <= 5; tick++) {
                 for (let i = 0; i < 2; i++) {
                     const id = store.allocId();
-                    store.markUsed(id, `k${tick}-${i}`, tick * 10 + i);
+                    store.setEntry(id, `k${tick}-${i}`, tick * 10 + i);
                     wheel.schedule(id, tick);
                 }
             }
@@ -574,8 +574,8 @@ describe("TimerWheel", () => {
             const id1 = store.allocId();
             const id2 = store.allocId();
 
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
 
             // Schedule both entries
             wheel.schedule(id1, 3);  // tick 3, bucket 3, expires soon
@@ -634,7 +634,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Schedule at tick 11 (bucket 3)
             wheel.schedule(id, 11);
@@ -663,7 +663,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Cannot schedule at current tick (expTick <= nowTick)
             expect(() => wheel.schedule(id, 5)).toThrow(/Cannot schedule in the past/);
@@ -709,7 +709,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             // Unlink without scheduling (should not crash)
             expect(() => wheel.unlink(id)).not.toThrow();
@@ -769,13 +769,13 @@ describe("TimerWheel", () => {
             expect(wheel.stats().overflowCountApprox).toBe(0);
 
             const id1 = store.allocId();
-            store.markUsed(id1, "k1", 1);
+            store.setEntry(id1, "k1", 1);
             wheel.schedule(id1, 20); // overflow
 
             expect(wheel.stats().overflowCountApprox).toBe(1);
 
             const id2 = store.allocId();
-            store.markUsed(id2, "k2", 2);
+            store.setEntry(id2, "k2", 2);
             wheel.schedule(id2, 25); // overflow
 
             expect(wheel.stats().overflowCountApprox).toBe(2);
@@ -816,9 +816,9 @@ describe("TimerWheel", () => {
             const id2 = store.allocId();
             const id3 = store.allocId();
 
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
-            store.markUsed(id3, "k3", 3);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
+            store.setEntry(id3, "k3", 3);
 
             // Schedule entries
             wheel.schedule(id1, 3);
@@ -854,8 +854,8 @@ describe("TimerWheel", () => {
             const id1 = store.allocId();
             const id2 = store.allocId();
 
-            store.markUsed(id1, "k1", 1);
-            store.markUsed(id2, "k2", 2);
+            store.setEntry(id1, "k1", 1);
+            store.setEntry(id2, "k2", 2);
 
             // id1 in overflow, id2 in wheel
             wheel.schedule(id1, 15); // overflow
@@ -891,7 +891,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
 
             wheel.schedule(id, 3);
 
@@ -926,7 +926,7 @@ describe("TimerWheel", () => {
             });
 
             const id = store.allocId();
-            store.markUsed(id, "key1", 100);
+            store.setEntry(id, "key1", 100);
             wheel.schedule(id, 5);
 
             // Advance to tick 5 directly
@@ -951,7 +951,7 @@ describe("TimerWheel", () => {
 
             const ids = [1, 3, 5].map((tick) => {
                 const id = store.allocId();
-                store.markUsed(id, `k${tick}`, tick);
+                store.setEntry(id, `k${tick}`, tick);
                 wheel.schedule(id, tick);
                 return id;
             });
