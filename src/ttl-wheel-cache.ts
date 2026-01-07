@@ -16,7 +16,7 @@ export class TtlWheelCache<K extends string | number, V> {
     // Configuration
     private readonly maxEntries: number;
     private readonly updateTTLOnGet: boolean;
-    private readonly passiveExpiration: boolean;
+    private readonly ttlAutopurge: boolean;
     private readonly tickMs: number;
     private readonly onEvict?: (key: K, value: V, reason: EvictReason) => void;
 
@@ -36,7 +36,7 @@ export class TtlWheelCache<K extends string | number, V> {
         // Store configuration
         this.maxEntries = options.maxEntries;
         this.updateTTLOnGet = options.updateTTLOnGet ?? false;
-        this.passiveExpiration = options.passiveExpiration ?? true;
+        this.ttlAutopurge = options.ttlAutopurge ?? true;
         this.onEvict = options.onEvict;
 
         this.tickMs = options.tickMs ?? 50;
@@ -76,14 +76,14 @@ export class TtlWheelCache<K extends string | number, V> {
         });
 
         // Start background expiration processing (only if passive mode)
-        if (this.passiveExpiration) {
+        if (this.ttlAutopurge) {
             this.startCleanupInterval();
         }
     }
 
     set(key: K, value: V, ttlMs: number): void {
         // Advance wheel if in active mode
-        if (!this.passiveExpiration) {
+        if (!this.ttlAutopurge) {
             this.advanceWheel();
         }
 
@@ -139,7 +139,7 @@ export class TtlWheelCache<K extends string | number, V> {
 
     get(key: K): V | undefined {
         // Advance wheel if in active mode
-        if (!this.passiveExpiration) {
+        if (!this.ttlAutopurge) {
             this.advanceWheel();
         }
 
@@ -181,7 +181,7 @@ export class TtlWheelCache<K extends string | number, V> {
 
     has(key: K): boolean {
         // Advance wheel if in active mode
-        if (!this.passiveExpiration) {
+        if (!this.ttlAutopurge) {
             this.advanceWheel();
         }
 
@@ -206,7 +206,7 @@ export class TtlWheelCache<K extends string | number, V> {
 
     delete(key: K): boolean {
         // Advance wheel if in active mode
-        if (!this.passiveExpiration) {
+        if (!this.ttlAutopurge) {
             this.advanceWheel();
         }
 
@@ -289,7 +289,7 @@ export class TtlWheelCache<K extends string | number, V> {
 
     /**
      * Advance the timer wheel and process expirations.
-     * Called automatically in active mode (passiveExpiration=false).
+     * Called automatically in active mode (ttlAutopurge=false).
      */
     private advanceWheel(): void {
         this.wheel.advanceToNow((id) => {

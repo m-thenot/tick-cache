@@ -45,7 +45,7 @@ describe("TtlWheelCache", () => {
                 maxEntries: 10,
             });
 
-            // Defaults: tickMs=50, wheelSize=4096, budgetPerTick=200000, passiveExpiration=true
+            // Defaults: tickMs=50, wheelSize=4096, budgetPerTick=200000, ttlAutopurge=true
             expect(cache.size()).toBe(0);
             cache.close();
         });
@@ -58,7 +58,7 @@ describe("TtlWheelCache", () => {
                 wheelSize: 8,
                 budgetPerTick: 1000,
                 updateTTLOnGet: true,
-                passiveExpiration: false,
+                ttlAutopurge: false,
                 onEvict: (key, _val, reason) => evictions.push({ key, reason }),
             });
 
@@ -275,7 +275,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: true, // Background interval
+                ttlAutopurge: true, // Background interval
                 time: fakeTime,
             });
 
@@ -298,7 +298,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
                 onEvict: (key, _val, reason) => evictions.push({ key, reason }),
             });
@@ -318,7 +318,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -338,7 +338,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -357,7 +357,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -376,7 +376,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: false, // No background interval
+                ttlAutopurge: false, // No background interval
                 time: fakeTime,
             });
 
@@ -396,7 +396,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: false,
+                ttlAutopurge: false,
                 time: fakeTime,
             });
 
@@ -419,7 +419,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: false,
+                ttlAutopurge: false,
                 time: fakeTime,
                 onEvict: (key) => evictions.push(key),
             });
@@ -440,7 +440,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: false,
+                ttlAutopurge: false,
                 time: fakeTime,
                 onEvict: (key) => evictions.push(key),
             });
@@ -636,7 +636,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 2,
                 tickMs: 50,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -671,7 +671,7 @@ describe("TtlWheelCache", () => {
                 maxEntries: 10,
                 tickMs: 50,
                 updateTTLOnGet: false, // default
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -695,7 +695,7 @@ describe("TtlWheelCache", () => {
                 maxEntries: 10,
                 tickMs: 50,
                 updateTTLOnGet: true, // Enable sliding expiration
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -729,7 +729,7 @@ describe("TtlWheelCache", () => {
                 maxEntries: 10,
                 tickMs: 50,
                 updateTTLOnGet: true,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -751,7 +751,7 @@ describe("TtlWheelCache", () => {
                 maxEntries: 10,
                 tickMs: 50,
                 updateTTLOnGet: true,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -832,7 +832,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 10,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -853,7 +853,7 @@ describe("TtlWheelCache", () => {
                 maxEntries: 10,
                 tickMs: 50,
                 wheelSize: 8, // Small wheel, horizon = 400ms
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -880,7 +880,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
             });
 
@@ -900,7 +900,7 @@ describe("TtlWheelCache", () => {
         it("should be usable after close() in active mode", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
-                passiveExpiration: false,
+                ttlAutopurge: false,
             });
 
             cache.set("key1", 100, 10000);
@@ -921,7 +921,7 @@ describe("TtlWheelCache", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 3,
                 tickMs: 50,
-                passiveExpiration: true,
+                ttlAutopurge: true,
                 time: fakeTime,
                 onEvict: (key, _val, reason) => evictions.push({ key, reason }),
             });

@@ -24,7 +24,7 @@ export interface Options<K extends string | number, V> {
      * When false, expirations are only processed during cache operations (get/set/has/delete).
      * Use false to avoid background timers if you access the cache frequently enough.
      */
-    passiveExpiration?: boolean; // default true
+    ttlAutopurge?: boolean; // default true
 
     /**
      * Optional custom time source (primarily for testing).
