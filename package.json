@@ -2,12 +2,19 @@
   "name": "tick-cache",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "bench": "npm run build && NODE_OPTIONS=\"--expose-gc\" tsx bench/index.ts -o bench/outputs/bench-results.json",
+    "bench:smoke": "npm run build && NODE_OPTIONS=\"--expose-gc\" tsx bench/index.ts --ops 100000 --warmup 5000 -o bench/outputs/bench-smoke.json",
+    "bench:workload": "npm run build && NODE_OPTIONS=\"--expose-gc\" tsx bench/index.ts -w",
+    "bench:prof": "npm run build && node --expose-gc --cpu-prof --cpu-prof-dir=bench/outputs --import tsx/esm bench/index.ts -o bench/outputs/bench-prof.json",
+    "bench:report": "tsx bench/reporting/report-generator.ts bench/outputs/bench-results.json bench/outputs/bench-report.html",
+    "bench:full": "npm run bench && npm run bench:report"
   },
   "keywords": [],
   "author": "",
@@ -15,7 +22,11 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^25.0.3",
+    "commander": "^12.1.0",
+    "lru-cache": "^11.0.2",
+    "@isaacs/ttlcache": "^2.1.4",
     "tsup": "^8.5.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   }
