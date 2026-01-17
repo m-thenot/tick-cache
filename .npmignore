@@ -1,0 +1,34 @@
+# Source files
+src/
+
+# Tests
+test/
+*.test.ts
+*.test.js
+
+# Benchmarks
+bench/
+
+# Config files
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Build artifacts
+*.tgz
+*.log
+node_modules/
+
+# Development
+.git/
+.gitignore
+
+# Outputs
+bench/outputs/
+coverage/
+*.cpuprofile

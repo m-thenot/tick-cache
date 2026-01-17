@@ -1,14 +1,30 @@
 {
   "name": "tick-cache",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "High-performance TTL cache with LRU eviction using a timer wheel algorithm",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:cov": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test",
     "bench": "npm run build && NODE_OPTIONS=\"--expose-gc\" tsx bench/index.ts -o bench/outputs/bench-results.json",
     "bench:smoke": "npm run build && NODE_OPTIONS=\"--expose-gc\" tsx bench/index.ts --ops 100000 --warmup 5000 -o bench/outputs/bench-smoke.json",
     "bench:workload": "npm run build && NODE_OPTIONS=\"--expose-gc\" tsx bench/index.ts -w",
@@ -16,10 +32,31 @@
     "bench:report": "tsx bench/reporting/report-generator.ts bench/outputs/bench-results.json bench/outputs/bench-report.html",
     "bench:full": "npm run bench && npm run bench:report"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "cache",
+    "ttl",
+    "lru",
+    "timer-wheel",
+    "expiration",
+    "memory-cache",
+    "performance",
+    "typescript",
+    "eviction",
+    "in-memory"
+  ],
+  "author": "Martin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/tick-cache.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/tick-cache/issues"
+  },
+  "homepage": "https://github.com/yourusername/tick-cache#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "commander": "^12.1.0",
