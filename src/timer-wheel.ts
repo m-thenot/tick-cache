@@ -254,7 +254,7 @@ export class TimerWheel<K, V> {
             const id = cursor;
             const nextCursor = this.store.wheelNext[id];
 
-            const exp = this.store.expiresTick[id] >>> 0;
+            const exp = this.store.expiresTick[id];
             const delta = exp - this.nowTick;
 
             if (delta <= this.horizonTicks) {
@@ -288,7 +288,7 @@ export class TimerWheel<K, V> {
             const id = cursor;
             const nextCursor = this.store.wheelNext[id];
 
-            const exp = this.store.expiresTick[id] >>> 0;
+            const exp = this.store.expiresTick[id];
 
             if (exp <= this.nowTick) {
                 // Expire
