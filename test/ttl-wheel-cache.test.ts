@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TtlWheelCache } from "../src/ttl-wheel-cache";
-import type { EvictReason } from "../src/types";
+import type { DisposeReason } from "../src/types";
 import type { TimeSource } from "../src/monotone-time";
 
 /**
@@ -51,7 +51,7 @@ describe("TtlWheelCache", () => {
         });
 
         it("should accept custom options", () => {
-            const evictions: Array<{ key: string; reason: EvictReason }> = [];
+            const disposals: Array<{ key: string; reason: DisposeReason }> = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 5,
                 tickMs: 100,
@@ -59,7 +59,7 @@ describe("TtlWheelCache", () => {
                 budgetPerTick: 1000,
                 updateTTLOnGet: true,
                 ttlAutopurge: false,
-                onEvict: (key, _val, reason) => evictions.push({ key, reason }),
+                onDispose: (key, _val, reason) => disposals.push({ key, reason }),
             });
 
             expect(cache.size()).toBe(0);
@@ -160,19 +160,19 @@ describe("TtlWheelCache", () => {
             cache.close();
         });
 
-        it("should call onEvict callback on LRU eviction", () => {
-            const evictions: Array<{ key: string; value: number; reason: EvictReason }> = [];
+        it("should call onDispose callback on LRU eviction", () => {
+            const disposals: Array<{ key: string; value: number; reason: DisposeReason }> = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 2,
-                onEvict: (key, value, reason) => evictions.push({ key, value, reason }),
+                onDispose: (key, value, reason) => disposals.push({ key, value, reason }),
             });
 
             cache.set("a", 1, 10000);
             cache.set("b", 2, 10000);
             cache.set("c", 3, 10000); // Evicts 'a'
 
-            expect(evictions).toHaveLength(1);
-            expect(evictions[0]).toEqual({ key: "a", value: 1, reason: "lru" });
+            expect(disposals).toHaveLength(1);
+            expect(disposals[0]).toEqual({ key: "a", value: 1, reason: "lru" });
             cache.close();
         });
 
@@ -190,9 +190,13 @@ describe("TtlWheelCache", () => {
             cache.close();
         });
 
-        it("should track evictedLru stat", () => {
+        it("should track LRU evictions via onDispose", () => {
+            let lruEvictions = 0;
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 2,
+                onDispose: (_key, _value, reason) => {
+                    if (reason === "lru") lruEvictions++;
+                },
             });
 
             cache.set("a", 1, 10000);
@@ -200,8 +204,7 @@ describe("TtlWheelCache", () => {
             cache.set("c", 3, 10000); // Evicts 'a'
             cache.set("d", 4, 10000); // Evicts 'b'
 
-            const stats = cache.stats();
-            expect(stats.evictedLru).toBe(2);
+            expect(lruEvictions).toBe(2);
             cache.close();
         });
     });
@@ -292,15 +295,15 @@ describe("TtlWheelCache", () => {
             cache.close();
         });
 
-        it("should call onEvict on TTL expiration", () => {
+        it("should call onDispose on TTL expiration", () => {
             const fakeTime = new FakeTimeSource();
-            const evictions: Array<{ key: string; reason: EvictReason }> = [];
+            const disposals: Array<{ key: string; reason: DisposeReason }> = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
                 ttlAutopurge: true,
                 time: fakeTime,
-                onEvict: (key, _val, reason) => evictions.push({ key, reason }),
+                onDispose: (key, _val, reason) => disposals.push({ key, reason }),
             });
 
             cache.set("key1", 100, 150);
@@ -308,18 +311,22 @@ describe("TtlWheelCache", () => {
             fakeTime.advance(200);
             vi.advanceTimersByTime(200);
 
-            expect(evictions).toHaveLength(1);
-            expect(evictions[0]).toEqual({ key: "key1", reason: "ttl" });
+            expect(disposals).toHaveLength(1);
+            expect(disposals[0]).toEqual({ key: "key1", reason: "ttl" });
             cache.close();
         });
 
-        it("should track evictedTtl stat", () => {
+        it("should track TTL expirations via onDispose", () => {
             const fakeTime = new FakeTimeSource();
+            let ttlCount = 0;
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
                 ttlAutopurge: true,
                 time: fakeTime,
+                onDispose: (_key, _value, reason) => {
+                    if (reason === "ttl") ttlCount++;
+                },
             });
 
             cache.set("k1", 1, 100);
@@ -328,8 +335,7 @@ describe("TtlWheelCache", () => {
             fakeTime.advance(150);
             vi.advanceTimersByTime(150);
 
-            const stats = cache.stats();
-            expect(stats.evictedTtl).toBe(2);
+            expect(ttlCount).toBe(2);
             cache.close();
         });
 
@@ -415,13 +421,13 @@ describe("TtlWheelCache", () => {
 
         it("should advance on set() in active mode", () => {
             const fakeTime = new FakeTimeSource();
-            const evictions: string[] = [];
+            const disposals: string[] = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
                 ttlAutopurge: false,
                 time: fakeTime,
-                onEvict: (key) => evictions.push(key),
+                onDispose: (key) => disposals.push(key),
             });
 
             cache.set("k1", 1, 100);
@@ -430,19 +436,19 @@ describe("TtlWheelCache", () => {
 
             cache.set("k2", 2, 1000); // Triggers advance
 
-            expect(evictions).toContain("k1");
+            expect(disposals).toContain("k1");
             cache.close();
         });
 
         it("should advance on delete() in active mode", () => {
             const fakeTime = new FakeTimeSource();
-            const evictions: string[] = [];
+            const disposals: string[] = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
                 tickMs: 50,
                 ttlAutopurge: false,
                 time: fakeTime,
-                onEvict: (key) => evictions.push(key),
+                onDispose: (key) => disposals.push(key),
             });
 
             cache.set("k1", 1, 100);
@@ -452,7 +458,7 @@ describe("TtlWheelCache", () => {
 
             cache.delete("k2"); // Triggers advance, k1 expires
 
-            expect(evictions).toContain("k1");
+            expect(disposals).toContain("k1");
             cache.close();
         });
     });
@@ -483,24 +489,28 @@ describe("TtlWheelCache", () => {
             cache.close();
         });
 
-        it("should call onEvict on delete", () => {
-            const evictions: Array<{ key: string; reason: EvictReason }> = [];
+        it("should call onDispose on delete", () => {
+            const disposals: Array<{ key: string; reason: DisposeReason }> = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
-                onEvict: (key, _val, reason) => evictions.push({ key, reason }),
+                onDispose: (key, _val, reason) => disposals.push({ key, reason }),
             });
 
             cache.set("key1", 100, 1000);
             cache.delete("key1");
 
-            expect(evictions).toHaveLength(1);
-            expect(evictions[0]).toEqual({ key: "key1", reason: "delete" });
+            expect(disposals).toHaveLength(1);
+            expect(disposals[0]).toEqual({ key: "key1", reason: "delete" });
             cache.close();
         });
 
-        it("should track evictedManual stat", () => {
+        it("should track manual deletions via onDispose", () => {
+            let deleteCount = 0;
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
+                onDispose: (_key, _value, reason) => {
+                    if (reason === "delete") deleteCount++;
+                },
             });
 
             cache.set("k1", 1, 1000);
@@ -508,8 +518,7 @@ describe("TtlWheelCache", () => {
             cache.delete("k1");
             cache.delete("k2");
 
-            const stats = cache.stats();
-            expect(stats.evictedManual).toBe(2);
+            expect(deleteCount).toBe(2);
             cache.close();
         });
     });
@@ -535,34 +544,37 @@ describe("TtlWheelCache", () => {
             cache.close();
         });
 
-        it("should call onEvict for all entries on clear", () => {
-            const evictions: Array<{ key: string; reason: EvictReason }> = [];
+        it("should call onDispose for all entries on clear", () => {
+            const disposals: Array<{ key: string; reason: DisposeReason }> = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
-                onEvict: (key, _val, reason) => evictions.push({ key, reason }),
+                onDispose: (key, _val, reason) => disposals.push({ key, reason }),
             });
 
             cache.set("k1", 1, 1000);
             cache.set("k2", 2, 1000);
             cache.clear();
 
-            expect(evictions).toHaveLength(2);
-            expect(evictions[0].reason).toBe("clear");
-            expect(evictions[1].reason).toBe("clear");
+            expect(disposals).toHaveLength(2);
+            expect(disposals[0].reason).toBe("clear");
+            expect(disposals[1].reason).toBe("clear");
             cache.close();
         });
 
-        it("should track evictedManual stat for clear", () => {
+        it("should track clear via onDispose", () => {
+            let clearCount = 0;
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
+                onDispose: (_key, _value, reason) => {
+                    if (reason === "clear") clearCount++;
+                },
             });
 
             cache.set("k1", 1, 1000);
             cache.set("k2", 2, 1000);
             cache.clear();
 
-            const stats = cache.stats();
-            expect(stats.evictedManual).toBe(2);
+            expect(clearCount).toBe(2);
             cache.close();
         });
 
@@ -578,25 +590,7 @@ describe("TtlWheelCache", () => {
     });
 
     describe("Stats Tracking", () => {
-        it("should track hits and misses", () => {
-            const cache = new TtlWheelCache<string, number>({
-                maxEntries: 10,
-            });
-
-            cache.set("k1", 1, 1000);
-
-            cache.get("k1"); // Hit
-            cache.get("k1"); // Hit
-            cache.get("k2"); // Miss
-            cache.get("k3"); // Miss
-
-            const stats = cache.stats();
-            expect(stats.hits).toBe(2);
-            expect(stats.misses).toBe(2);
-            cache.close();
-        });
-
-        it("should include size in stats", () => {
+        it("should track size in stats", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
             });
@@ -609,35 +603,32 @@ describe("TtlWheelCache", () => {
             cache.close();
         });
 
-        it("should reset stats", () => {
+        it("should only return size in stats", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 10,
             });
 
             cache.set("k1", 1, 1000);
-            cache.get("k1");
-            cache.get("k2");
-
-            cache.resetStats();
+            cache.set("k2", 2, 1000);
 
             const stats = cache.stats();
-            expect(stats.hits).toBe(0);
-            expect(stats.misses).toBe(0);
-            expect(stats.evictedTtl).toBe(0);
-            expect(stats.evictedLru).toBe(0);
-            expect(stats.evictedManual).toBe(0);
-            expect(stats.size).toBe(1); // Size not reset
+            expect(stats.size).toBe(2);
+            expect(Object.keys(stats)).toEqual(["size"]);
             cache.close();
         });
 
-        it("should track all eviction types", () => {
+        it("should track all disposal types via onDispose", () => {
             vi.useFakeTimers();
             const fakeTime = new FakeTimeSource();
+            const disposalCounts = { ttl: 0, lru: 0, delete: 0, clear: 0, set: 0 };
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 2,
                 tickMs: 50,
                 ttlAutopurge: true,
                 time: fakeTime,
+                onDispose: (_key, _value, reason) => {
+                    disposalCounts[reason]++;
+                },
             });
 
             cache.set("k1", 1, 100); // Will expire
@@ -649,8 +640,7 @@ describe("TtlWheelCache", () => {
             fakeTime.advance(150);
             vi.advanceTimersByTime(150); // Expire k1 if not already evicted
 
-            const stats = cache.stats();
-            expect(stats.evictedManual).toBeGreaterThan(0);
+            expect(disposalCounts.delete).toBeGreaterThan(0);
             cache.close();
             vi.useRealTimers();
         });
@@ -813,7 +803,7 @@ describe("TtlWheelCache", () => {
             cache.close();
         });
 
-        it("should work without onEvict callback", () => {
+        it("should work without onDispose callback", () => {
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 2,
             });
@@ -917,13 +907,13 @@ describe("TtlWheelCache", () => {
         it("should handle mixed operations", () => {
             vi.useFakeTimers();
             const fakeTime = new FakeTimeSource();
-            const evictions: Array<{ key: string; reason: EvictReason }> = [];
+            const disposals: Array<{ key: string; reason: DisposeReason }> = [];
             const cache = new TtlWheelCache<string, number>({
                 maxEntries: 3,
                 tickMs: 50,
                 ttlAutopurge: true,
                 time: fakeTime,
-                onEvict: (key, _val, reason) => evictions.push({ key, reason }),
+                onDispose: (key, _val, reason) => disposals.push({ key, reason }),
             });
 
             cache.set("a", 1, 150); // Will expire at t=150
@@ -949,8 +939,8 @@ describe("TtlWheelCache", () => {
             expect(cache.get("c")).toBe(3);
             expect(cache.get("d")).toBe(4);
 
-            expect(evictions.filter(e => e.reason === "lru").length).toBe(1); // 'a' evicted by LRU
-            expect(evictions.filter(e => e.reason === "delete").length).toBe(1); // 'b' deleted
+            expect(disposals.filter(e => e.reason === "lru").length).toBe(1); // 'a' evicted by LRU
+            expect(disposals.filter(e => e.reason === "delete").length).toBe(1); // 'b' deleted
 
             cache.close();
             vi.useRealTimers();

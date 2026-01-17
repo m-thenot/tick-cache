@@ -1,9 +1,10 @@
-import { Options, Stats, EvictReason } from "./types";
+import { Options, Stats, DisposeReason } from "./types";
 import { EntryStore, EntryId } from "./entry-store";
 import { TimerWheel } from "./timer-wheel";
 import { MonotoneTicker } from "./monotone-time";
 import { LruList } from "./lru-list";
 import { NIL } from "./constants";
+import { log } from "node:console";
 
 export class TtlWheelCache<K extends string | number, V> {
     // Core components
@@ -18,16 +19,7 @@ export class TtlWheelCache<K extends string | number, V> {
     private readonly updateTTLOnGet: boolean;
     private readonly ttlAutopurge: boolean;
     private readonly tickMs: number;
-    private readonly onEvict?: (key: K, value: V, reason: EvictReason) => void;
-
-    // Stats
-    private statsData: {
-        hits: number;
-        misses: number;
-        evictedTtl: number;
-        evictedLru: number;
-        evictedManual: number;
-    };
+    private readonly onDispose?: (key: K, value: V, reason: DisposeReason) => void;
 
     // Cleanup interval
     private intervalId?: NodeJS.Timeout;
@@ -37,7 +29,7 @@ export class TtlWheelCache<K extends string | number, V> {
         this.maxEntries = options.maxEntries;
         this.updateTTLOnGet = options.updateTTLOnGet ?? false;
         this.ttlAutopurge = options.ttlAutopurge ?? true;
-        this.onEvict = options.onEvict;
+        this.onDispose = options.onDispose;
 
         this.tickMs = options.tickMs ?? 50;
         const wheelSize = options.wheelSize ?? 4096;
@@ -53,15 +45,6 @@ export class TtlWheelCache<K extends string | number, V> {
 
         // Initialize LRU list
         this.lru = new LruList(this.store);
-
-        // Initialize stats
-        this.statsData = {
-            hits: 0,
-            misses: 0,
-            evictedTtl: 0,
-            evictedLru: 0,
-            evictedManual: 0,
-        };
 
         // Initialize timer wheel
         this.ticker = new MonotoneTicker({
@@ -96,6 +79,9 @@ export class TtlWheelCache<K extends string | number, V> {
 
         if (existingId !== undefined) {
             // UPDATE existing entry
+            const oldValue = this.store.valRef[existingId];
+
+            // Replace value
             this.store.valRef[existingId] = value;
 
             // Store TTL and reschedule expiration
@@ -105,6 +91,10 @@ export class TtlWheelCache<K extends string | number, V> {
 
             // Touch LRU (move to head)
             this.lru.touch(existingId);
+
+            if (this.onDispose && oldValue !== undefined) {
+                this.onDispose(key, oldValue, "set");
+            }
 
         } else {
             // NEW entry: evict LRU if at capacity
@@ -146,7 +136,6 @@ export class TtlWheelCache<K extends string | number, V> {
         const id = this.keyIndex.get(key);
 
         if (id === undefined) {
-            this.statsData.misses++;
             return undefined;
         }
 
@@ -154,15 +143,12 @@ export class TtlWheelCache<K extends string | number, V> {
         const expireTick = this.store.expiresTick[id];
         const nowTick = this.ticker.nowTick();
 
+
         if (expireTick <= nowTick) {
             // Entry expired but hasn't been cleaned up yet
             this.onExpireEntry(id, "ttl");
-            this.statsData.misses++;
             return undefined;
         }
-
-        // Success
-        this.statsData.hits++;
 
         // Touch LRU (move to head)
         this.lru.touch(id);
@@ -216,45 +202,18 @@ export class TtlWheelCache<K extends string | number, V> {
             return false;
         }
 
-        const value = this.store.valRef[id];
-
-        // Call user callback
-        if (this.onEvict && value !== undefined) {
-            this.onEvict(key, value, "delete");
-        }
-
-        // Remove from all structures
-        this.removeEntry(id);
-        this.statsData.evictedManual++;
+        this.removeEntry(id, "delete");
 
         return true;
     }
 
     clear(): void {
-        // Call onEvict and free entries
-        for (const [key, id] of this.keyIndex) {
-            const value = this.store.valRef[id];
+        // Collect all entry IDs (can't modify keyIndex while iterating)
+        const ids = Array.from(this.keyIndex.values());
 
-            // Call user callback
-            if (this.onEvict && value !== undefined) {
-                this.onEvict(key, value, "clear");
-            }
-
-            // Unlink from timer wheel
-            this.wheel.unlink(id);
-
-            // Free the entry
-            this.store.freeId(id);
+        for (const id of ids) {
+            this.removeEntry(id, "clear");
         }
-
-        // Update stats
-        this.statsData.evictedManual += this.keyIndex.size;
-
-        // Clear index
-        this.keyIndex.clear();
-
-        // Reset LRU list
-        this.lru.reset();
     }
 
     size(): number {
@@ -264,20 +223,7 @@ export class TtlWheelCache<K extends string | number, V> {
     stats(): Stats {
         return {
             size: this.size(),
-            hits: this.statsData.hits,
-            misses: this.statsData.misses,
-            evictedTtl: this.statsData.evictedTtl,
-            evictedLru: this.statsData.evictedLru,
-            evictedManual: this.statsData.evictedManual,
         };
-    }
-
-    resetStats(): void {
-        this.statsData.hits = 0;
-        this.statsData.misses = 0;
-        this.statsData.evictedTtl = 0;
-        this.statsData.evictedLru = 0;
-        this.statsData.evictedManual = 0;
     }
 
     close(): void {
@@ -297,8 +243,9 @@ export class TtlWheelCache<K extends string | number, V> {
         });
     }
 
-    private removeEntry(id: EntryId): void {
+    private removeEntry(id: EntryId, reason: DisposeReason): void {
         const key = this.store.keyRef[id];
+        const value = this.store.valRef[id];
 
         // Remove from key index
         if (key !== undefined) {
@@ -313,24 +260,14 @@ export class TtlWheelCache<K extends string | number, V> {
 
         // Free the entry ID back to store
         this.store.freeId(id);
+
+        if (this.onDispose && key !== undefined && value !== undefined) {
+            this.onDispose(key, value, reason);
+        }
     }
 
-    private onExpireEntry(id: EntryId, reason: EvictReason): void {
-        const key = this.store.keyRef[id];
-        const value = this.store.valRef[id];
-
-        // Call user callback
-        if (this.onEvict && key !== undefined && value !== undefined) {
-            this.onEvict(key, value, reason);
-        }
-
-        // Remove from all structures
-        this.removeEntry(id);
-
-        // Update stats based on reason
-        if (reason === "ttl") {
-            this.statsData.evictedTtl++;
-        }
+    private onExpireEntry(id: EntryId, reason: DisposeReason): void {
+        this.removeEntry(id, reason);
     }
 
     private evictLru(): boolean {
@@ -339,17 +276,7 @@ export class TtlWheelCache<K extends string | number, V> {
             return false; // No entries to evict
         }
 
-        const key = this.store.keyRef[tail];
-        const value = this.store.valRef[tail];
-
-        // Call user callback before removing entry
-        if (this.onEvict && key !== undefined && value !== undefined) {
-            this.onEvict(key, value, "lru");
-        }
-
-        // Remove from all structures
-        this.removeEntry(tail);
-        this.statsData.evictedLru++;
+        this.removeEntry(tail, "lru");
 
         return true;
     }

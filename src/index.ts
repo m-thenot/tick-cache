@@ -1,5 +1,5 @@
-import { Options, Stats, EvictReason } from "./types";
+import { Options, Stats, DisposeReason } from "./types";
 
 // Re-export types for public API
-export type { Options, Stats, EvictReason };
+export type { Options, Stats, DisposeReason };
 export { TtlWheelCache } from "./ttl-wheel-cache";

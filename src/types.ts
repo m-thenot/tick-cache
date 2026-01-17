@@ -1,14 +1,9 @@
 import type { TimeSource } from "./monotone-time";
 
-export type EvictReason = "ttl" | "lru" | "delete" | "clear";
+export type DisposeReason = "ttl" | "lru" | "delete" | "clear" | "set";
 
 export interface Stats {
     size: number;
-    hits: number;
-    misses: number;
-    evictedTtl: number;
-    evictedLru: number;
-    evictedManual: number; // delete/clear
 }
 
 export interface Options<K extends string | number, V> {
@@ -32,5 +27,8 @@ export interface Options<K extends string | number, V> {
      */
     time?: TimeSource;
 
-    onEvict?: (key: K, value: V, reason: EvictReason) => void;
+    /**
+     * Optional callback invoked when an entry is disposed (evicted, deleted, cleared, or replaced).
+     */
+    onDispose?: (key: K, value: V, reason: DisposeReason) => void;
 }

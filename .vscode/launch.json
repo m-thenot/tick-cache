@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Bench",
+      "program": "${workspaceFolder}/bench/index.ts",
+      "args": [
+        "-o",
+        "bench/outputs/bench-results.json"
+      ],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx"],
+      "env": {
+        "NODE_OPTIONS": "--expose-gc"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "outputCapture": "std",
+      "preLaunchTask": "build"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Report Generator",
+      "program": "${workspaceFolder}/bench/reporting/report-generator.ts",
+      "args": [
+        "bench/outputs/bench-results.json",
+        "bench/outputs/bench-report.html"
+      ],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "outputCapture": "std"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Bench Full",
+      "configurations": ["Debug Bench", "Debug Report Generator"],
+      "stopAll": true,
+      "presentation": {
+        "order": 1
+      }
+    }
+  ]
+}
