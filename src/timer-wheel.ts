@@ -34,6 +34,8 @@ export class TimerWheel<K, V> {
     private overflowCountApprox = 0;
 
     // Current processed tick (discrete)
+    // TODO: nowTick can overflow after 2^32 ticks (~6.8 years with tickMs=50, ~49 days with tickMs=1).
+    // Current comparisons (< and <=) do not handle wrap-around correctly.
     private nowTick: number;
 
     // continuation state when budget is exceeded mid-advance
