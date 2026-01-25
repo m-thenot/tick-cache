@@ -197,6 +197,7 @@ export class EntryStore<K, V> {
         const oldLruNext = this.lruNext;
         const oldLruPrev = this.lruPrev;
         const oldWheelBucket = this.wheelBucket;
+        const oldCap = this.cap;
 
         this.wheelNext = new Int32Array(newCap);
         this.wheelPrev = new Int32Array(newCap);
@@ -204,17 +205,17 @@ export class EntryStore<K, V> {
         this.lruPrev = new Int32Array(newCap);
         this.wheelBucket = new Int32Array(newCap);
 
-        fillI32(this.wheelNext, NIL);
-        fillI32(this.wheelPrev, NIL);
-        fillI32(this.lruNext, NIL);
-        fillI32(this.lruPrev, NIL);
-        fillI32(this.wheelBucket, BUCKET_NONE);
-
         this.wheelNext.set(oldWheelNext);
         this.wheelPrev.set(oldWheelPrev);
         this.lruNext.set(oldLruNext);
         this.lruPrev.set(oldLruPrev);
         this.wheelBucket.set(oldWheelBucket);
+
+        fillI32(this.wheelNext.subarray(oldCap), NIL);
+        fillI32(this.wheelPrev.subarray(oldCap), NIL);
+        fillI32(this.lruNext.subarray(oldCap), NIL);
+        fillI32(this.lruPrev.subarray(oldCap), NIL);
+        fillI32(this.wheelBucket.subarray(oldCap), BUCKET_NONE);
 
         this.cap = newCap;
     }

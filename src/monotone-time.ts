@@ -30,4 +30,11 @@ export class MonotoneTicker {
         const ms = this.time.nowMs();
         return Math.floor(ms / this.tickMs);
     }
+
+    /**
+     * Convert TTL in milliseconds to number of ticks.
+     */
+    ttlToTicks(ttlMs: number): number {
+        return Math.floor(ttlMs / this.tickMs);
+    }
 }

@@ -86,7 +86,7 @@ export class TtlWheelCache<K extends string | number, V> {
 
             // Store TTL and reschedule expiration
             this.store.ttlMs[existingId] = ttlMs;
-            const expireTick = this.ticker.nowTick() + Math.floor(ttlMs / this.ticker.tickMs);
+            const expireTick = this.ticker.nowTick() + this.ticker.ttlToTicks(ttlMs);
             this.wheel.schedule(existingId, expireTick);
 
             // Touch LRU (move to head)
@@ -119,7 +119,7 @@ export class TtlWheelCache<K extends string | number, V> {
             this.keyIndex.set(key, id);
 
             // Schedule expiration
-            const expireTick = this.ticker.nowTick() + Math.floor(ttlMs / this.ticker.tickMs);
+            const expireTick = this.ticker.nowTick() + this.ticker.ttlToTicks(ttlMs);
             this.wheel.schedule(id, expireTick);
 
             // Add to LRU head (most recent)
@@ -157,7 +157,7 @@ export class TtlWheelCache<K extends string | number, V> {
         if (this.updateTTLOnGet) {
             const ttl = this.store.ttlMs[id];
             if (ttl > 0) {
-                const newExpireTick = this.ticker.nowTick() + Math.floor(ttl / this.ticker.tickMs);
+                const newExpireTick = this.ticker.nowTick() + this.ticker.ttlToTicks(ttl);
                 this.wheel.schedule(id, newExpireTick);
             }
         }

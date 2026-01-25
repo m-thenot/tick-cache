@@ -155,13 +155,15 @@ export class TimerWheel<K, V> {
                 return false;
             }
 
-            // Then: process the current bucket
+            // Then: process the current bucket (skip if empty)
             const bucket = this.bucketOf(this.nowTick);
-            processed += this.processBucket(bucket, processed, onExpire);
+            if (this.wheelHeads[bucket] !== NIL) {
+                processed += this.processBucket(bucket, processed, onExpire);
 
-            if (processed >= this.budgetPerTick) {
-                this.pendingTargetTick = targetTick;
-                return false;
+                if (processed >= this.budgetPerTick) {
+                    this.pendingTargetTick = targetTick;
+                    return false;
+                }
             }
         }
 
