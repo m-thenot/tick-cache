@@ -29,8 +29,10 @@ export class TimerWheel<K, V> {
     // Heads of bucket lists
     private readonly wheelHeads: Int32Array;
 
-    // Overflow list head (uses store.wheelNext/Prev too)
-    private overflowHead: number = NIL;
+    // Overflow bins: organized by epoch (each epoch = wheelSize ticks)
+    // Key: epoch index
+    // Value: head of linked list for that epoch
+    private readonly overflowBins: Map<number, number> = new Map();
     private overflowCountApprox = 0;
 
     // Current processed tick (discrete)
@@ -212,26 +214,37 @@ export class TimerWheel<K, V> {
     // ---- Overflow internals ----
 
     private linkOverflow(id: EntryId): void {
-        const head = this.overflowHead;
+        const expTick = this.store.expiresTick[id];
+        const epochIndex = Math.floor(expTick / this.wheelSize);
+
+        const head = this.overflowBins.get(epochIndex) ?? NIL;
 
         this.store.wheelBucket[id] = BUCKET_OVERFLOW;
         this.store.wheelPrev[id] = NIL;
         this.store.wheelNext[id] = head;
 
         if (head !== NIL) this.store.wheelPrev[head] = id;
-        this.overflowHead = id;
+        this.overflowBins.set(epochIndex, id);
         this.overflowCountApprox++;
     }
 
     private unlinkOverflow(id: EntryId): void {
-        const prev = this.store.wheelPrev[id]; 1
-        const next = this.store.wheelNext[id]; 3
+        const expTick = this.store.expiresTick[id];
+        const epochIndex = Math.floor(expTick / this.wheelSize);
+
+        const prev = this.store.wheelPrev[id];
+        const next = this.store.wheelNext[id];
 
         if (prev !== NIL) {
             this.store.wheelNext[prev] = next;
         } else {
-            // head
-            this.overflowHead = next;
+            // This was the head of its bin
+            if (next !== NIL) {
+                this.overflowBins.set(epochIndex, next);
+            } else {
+                // Bin is now empty
+                this.overflowBins.delete(epochIndex);
+            }
         }
 
         if (next !== NIL) {
@@ -246,32 +259,53 @@ export class TimerWheel<K, V> {
 
     /**
      * Move overflow entries into the wheel when they are close enough.
-     * Unsorted overflow list: we scan until we hit budget.
+     * With sorted bins, we only scan bins that could contain entries within horizon.
      */
     private drainOverflowWithinHorizon(processedSoFar: number, onExpire: (id: EntryId) => void): number {
+        // Early exit: no overflow entries at all
+        if (this.overflowBins.size === 0) {
+            return 0;
+        }
+
         let processed = 0;
-        let cursor = this.overflowHead;
 
-        while (cursor !== NIL && (processedSoFar + processed) < this.budgetPerTick) {
-            const id = cursor;
-            const nextCursor = this.store.wheelNext[id];
+        // Calculate which bins could contain entries now within horizon
+        // Entries within horizon: nowTick < expTick <= nowTick + horizonTicks
+        const minExpTick = this.nowTick + 1;
+        const maxExpTick = this.nowTick + this.horizonTicks;
+        const minEpoch = Math.floor(minExpTick / this.wheelSize);
+        const maxEpoch = Math.floor(maxExpTick / this.wheelSize);
 
-            const exp = this.store.expiresTick[id];
-            const delta = exp - this.nowTick;
-
-            if (delta <= this.horizonTicks) {
-                // Move to wheel (or expire if already due)
-                this.unlinkOverflow(id);
-
-                if (exp <= this.nowTick) {
-                    onExpire(id);
-                } else {
-                    this.linkWheelHead(id, this.bucketOf(exp));
-                }
-                processed++;
+        // Scan all bins in range
+        for (let epoch = minEpoch; epoch <= maxEpoch && (processedSoFar + processed) < this.budgetPerTick; epoch++) {
+            const epochHead = this.overflowBins.get(epoch);
+            if (epochHead === undefined || epochHead === NIL) {
+                continue;
             }
 
-            cursor = nextCursor;
+            let cursor: EntryId | undefined = epochHead;
+
+            while (cursor !== NIL && cursor !== undefined && (processedSoFar + processed) < this.budgetPerTick) {
+                const id = cursor as EntryId;
+                const nextCursor = this.store.wheelNext[id] as number;
+
+                const exp = this.store.expiresTick[id];
+                const delta = exp - this.nowTick;
+
+                if (delta <= this.horizonTicks) {
+                    // Move to wheel (or expire if already due)
+                    this.unlinkOverflow(id);
+
+                    if (exp <= this.nowTick) {
+                        onExpire(id);
+                    } else {
+                        this.linkWheelHead(id, this.bucketOf(exp));
+                    }
+                    processed++;
+                }
+
+                cursor = nextCursor;
+            }
         }
 
         return processed;
